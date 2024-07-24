@@ -16,7 +16,7 @@ class Car {
 
         //set non dummy cars to have sensors
         if(control != "DUMMY") {
-            
+            this.sensor = new Sensor(this);
         }
 
         //give car appropriate controls
@@ -29,6 +29,12 @@ class Car {
             this.#move();
             this.polygon = this.#createPolygon();
             this.damaged = this.#assessDamage(roadBoarders, traffic);
+        }
+        if(this.sensor) {
+            this.sensor.update(roadBoarders, traffic);
+            const offsets = this.sensor.readings.map (
+                s => s == null ? 0 : 1 - s.offset
+            );
         }
         //sensor and brain stuff
     }
@@ -141,14 +147,14 @@ class Car {
         }
         ctx.fill();
 
+        //display cars y position
+        ctx.fillStyle = "black";
+        ctx.font = "12px Arial";
+        ctx.fillText("distance: " + Math.abs(Math.round(this.y)), this.x, this.y + 50);
+
         //draw sensor lines
         if(drawSensor && this.sensor) {
             this.sensor.draw(ctx);
         }
-
-        //display cars y position
-        ctx.fillStyle = "black";
-        ctx.font = "12px Arial";
-        ctx.fillText("distance: " + Math.abs(Math.round(this.y)), this.x, this.y - 10);
     }
 }
