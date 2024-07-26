@@ -15,8 +15,11 @@ class Car {
         this.useBrain = control == "AI";
 
         //set non dummy cars to have sensors
-        if(control != "DUMMY") {
+        if(control == "AI") {
             this.sensor = new Sensor(this);
+
+            //give car neural network for control
+            this.brain = new NeuralNetwork([this.sensor.rayCount, 6, 4]);
         }
 
         //give car appropriate controls
@@ -35,8 +38,16 @@ class Car {
             const offsets = this.sensor.readings.map (
                 s => s == null ? 0 : 1 - s.offset
             );
+            //send senor data as input to neural network    
+            const outputs = NeuralNetwork.feedForward(offsets, this.brain);
+            if(this.useBrain) {
+                //get outputs from neural network
+                this.controls.forward = outputs[0];
+                this.controls.left = outputs[1];
+                this.controls.right = outputs[2];
+                this.controls.reverse = outputs[3];
+            }
         }
-        //sensor and brain stuff
     }
 
     //implement car movement

@@ -25,7 +25,8 @@ class Road{
     //function to get center of each lane given the lane index
     getLaneCenter(laneIndex) {
         const laneWidth = this.width / this.lane;
-        return this.left + laneWidth / 2;
+        return this.left + laneWidth / 2 + 
+            Math.min(laneIndex, this.lane - 1) * laneWidth;
     }
 
     //function that draws the road on the canvas
