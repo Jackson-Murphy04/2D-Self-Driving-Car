@@ -62,7 +62,7 @@ function spawnTraffic() {
 spawnTraffic();
 animate();
 
-function animate() {
+function animate(time) {
 
     //animate traffic
     for (let i = 0; i < simTraffic.length; i++) {
@@ -104,6 +104,9 @@ function animate() {
     carCtx.restore();
     playerCtx.restore();
 
+    //setup visualizer
+    networkCtx.lineDashOffset = -time / 50;
+    Visualizer.drawNetwork(networkCtx, simCar.brain);
     //request animation frame to animate the car on each frame
     requestAnimationFrame(animate);
 }
