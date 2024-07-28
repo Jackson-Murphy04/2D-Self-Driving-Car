@@ -1,5 +1,8 @@
 class Car {
     constructor(x, y, width, height, control, maxSpeed = 3) {
+        this.xOrigin = x;
+        this.yOrigin = y;
+        
         this.x = x;
         this.y = y;
         this.width = width;
@@ -14,6 +17,8 @@ class Car {
 
         this.useBrain = control == "AI";
 
+        this.fitness = 0;
+
         //set non dummy cars to have sensors
         if(control == "AI") {
             this.sensor = new Sensor(this);
@@ -24,6 +29,15 @@ class Car {
 
         //give car appropriate controls
         this.controls = new Controls(control);
+    }
+
+    reset() {
+        this.x = this.xOrigin;
+        this.y = this.yOrigin;
+        this.speed = 0;
+        this.angle = 0;
+        this.damaged = false;
+        this.fitness = 0;
     }
 
     update(roadBoarders, traffic) {
