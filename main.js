@@ -42,7 +42,9 @@ let bestCar = simCars[0];
 function generateCars(N) {
     const cars = [];
     for (let i = 0; i < N; i++) {
-        cars.push(new Car(carCanvas.width / 2, 0, 30, 50, "AI"));
+        const car = new Car(carCanvas.width / 2, 0, 30, 50, "AI");
+        car.passedTrafficCars = 0; // Add a counter for passed traffic cars
+        cars.push(car);
     }
     return cars;
 }
@@ -55,6 +57,7 @@ function stopSim() {
 
         for (let i = 0; i < simCars.length; i++) {
             simCars[i].reset();
+            simCars[i].passedTrafficCars = 0; // Reset the passed traffic cars counter
         }
 
         const bestBrain = bestCar.brain;
@@ -109,7 +112,7 @@ function spawnTraffic() {
 }
 
 function fitness(car) {
-    const score = car.y * -1;
+    const score = car.passedTrafficCars + (car.y * -1 * .001);
     return score;
 }
 
@@ -161,6 +164,15 @@ function animate(time) {
 
         for (let i = 0; i < simCars.length; i++) {
             simCars[i].update(simRoad.borders, simTraffic);
+        }
+
+        // Check if sim cars have passed any traffic cars
+        for (let i = 0; i < simCars.length; i++) {
+            for (let j = 0; j < simTraffic.length; j++) {
+                if (simCars[i].y < simTraffic[j].y) {
+                    simCars[i].passedTrafficCars++;
+                }
+            }
         }
 
         //call fitness function and calculate for each car and update best car
