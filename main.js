@@ -23,14 +23,36 @@ const simRoad = new Road(carCanvas.width / 2, carCanvas.width * 0.9);
 //build player road
 const playerRoad = new Road(playerCanvas.width / 2, playerCanvas.width * 0.9);
 
+//define timer duration (60 seconds)
+const timerDuration = 30000;
+let timerId;
+
+let generation = 0;
+
+let bestOverallCar = null;
+let bestOverallCarFitness = null; // Add a variable to store the best overall car's original fitness
+let bestOverallBrain = null; // Add a variable to store the best overall car's brain
+let bestOverallFitness = [];
+
 //add function for start and stoping of sim
 let isAnimating = false;
 let animationFrameId;
 function startSim() {
     if (!isAnimating) {
         isAnimating = true;
+        startTimer();
         animate();
     }
+}
+
+//start timer function
+function startTimer() {
+    if(timerId) {
+        clearTimeout(timerId);
+    }
+    timerId = setTimeout(() => {
+        stopSim();
+    }, timerDuration);
 }
 
 //create array of sim cars (N is number of agents) and function to generate cars
@@ -44,6 +66,7 @@ function generateCars(N) {
     for (let i = 0; i < N; i++) {
         const car = new Car(carCanvas.width / 2, 0, 30, 50, "AI");
         car.passedTrafficCars = 0; // Add a counter for passed traffic cars
+        car.passedTrafficSet = new Set(); // Add a set to track passed traffic cars
         cars.push(car);
     }
     return cars;
@@ -53,38 +76,102 @@ function stopSim() {
     if (isAnimating) {
         isAnimating = false;
         cancelAnimationFrame(animationFrameId);
-        //mutate network based on best brain
 
+        // Log progress
+        console.log(`Generation: ${generation}`);
+        console.log(`Best Fitness: ${bestCar.fitness}`);
+        console.log(`Best Overall Fitness: ${bestOverallCarFitness !== null ? bestOverallCarFitness : 'N/A'}`); // Log the saved fitness
+        bestOverallFitness.push(bestOverallCarFitness);
+        console.log(`Distance Traveled: ${-bestCar.y}`);
+        console.log(`Passed Traffic Cars: ${bestCar.passedTrafficCars}`);
+
+        // Calculate improvement over last generation
+        if (bestOverallCarFitness !== null && bestCar.fitness > bestOverallCarFitness) {
+            const improvement = bestCar.fitness - bestOverallCarFitness;
+            console.log(`Improvement over last generation: ${improvement}`);
+        } else {
+            console.log(`No improvement over last generation`);
+        }
+
+        // Calculate improvement over last 5 generations
+        if (generation >= 5) {
+            const fiveGenerationsAgoFitness = bestOverallFitness[generation - 5];
+            if (bestOverallCarFitness > fiveGenerationsAgoFitness) {
+                const improvement = bestOverallCarFitness - fiveGenerationsAgoFitness;
+                console.log(`Improvement over last 5 generations: ${improvement}`);
+            } else {
+                console.log(`No improvement over last 5 generations`);
+            }
+        } else {
+            console.log(`Not enough generations for 5-generation comparison`);
+        }
+
+        // Initialize bestOverallCar if it's null or update if the current best car is better
+        if (bestOverallCar === null || bestCar.fitness > bestOverallCarFitness) {
+            bestOverallCar = bestCar;
+            bestOverallCarFitness = bestCar.fitness; // Save the fitness
+            bestOverallBrain = JSON.parse(JSON.stringify(bestCar.brain)); // Save the brain
+        }
+
+        // Mutate network based on best brain
         for (let i = 0; i < simCars.length; i++) {
             simCars[i].reset();
             simCars[i].passedTrafficCars = 0; // Reset the passed traffic cars counter
+            simCars[i].passedTrafficSet.clear(); // Clear the set of passed traffic cars
         }
 
-        const bestBrain = bestCar.brain;
         for (let i = 0; i < simCars.length; i++) {
-            simCars[i].brain = JSON.parse(JSON.stringify(bestBrain)); // Clone the brain
+            simCars[i].brain = JSON.parse(JSON.stringify(bestOverallBrain)); // Clone the best overall brain
             if (i != 0) {
-                NeuralNetwork.mutate(simCars[i].brain, 0.2);
+                NeuralNetwork.mutate(simCars[i].brain, 0.1);
             }
         }
 
-        //restart sim
+        // Restart sim
         bestCar = simCars[0];
         simTraffic = [];
-        spawnTraffic();
+        simTraffic.push(new Car(simRoad.getLaneCenter(1), -100, 30, 50, "DUMMY", 2));
+        simTraffic.push(new Car(simRoad.getLaneCenter(0), -300, 30, 50, "DUMMY", 2));
+        simTraffic.push(new Car(simRoad.getLaneCenter(2), -300, 30, 50, "DUMMY", 2));
+        simTraffic.push(new Car(simRoad.getLaneCenter(1), -500, 30, 50, "DUMMY", 2));
+        simTraffic.push(new Car(simRoad.getLaneCenter(2), -500, 30, 50, "DUMMY", 2));
+        simTraffic.push(new Car(simRoad.getLaneCenter(0), -700, 30, 50, "DUMMY", 2));
+        simTraffic.push(new Car(simRoad.getLaneCenter(1), -700, 30, 50, "DUMMY", 2));
+        spawnTraffic(false);
         startSim();
+
+        // Add to generation count
+        generation++;
     }
 }
 
 //create player car
 const playerCar = new Car(playerCanvas.width / 2, 0, 30, 50, "KEYS");
 
-//spawn randow traffic patterns 
+//spawn random traffic patterns 
 let simTraffic = [];
+
+simTraffic.push(new Car(simRoad.getLaneCenter(1), -100, 30, 50, "DUMMY", 2));
+simTraffic.push(new Car(simRoad.getLaneCenter(0), -300, 30, 50, "DUMMY", 2));
+simTraffic.push(new Car(simRoad.getLaneCenter(2), -300, 30, 50, "DUMMY", 2));
+simTraffic.push(new Car(simRoad.getLaneCenter(1), -500, 30, 50, "DUMMY", 2));
+simTraffic.push(new Car(simRoad.getLaneCenter(2), -500, 30, 50, "DUMMY", 2));
+simTraffic.push(new Car(simRoad.getLaneCenter(0), -700, 30, 50, "DUMMY", 2));
+simTraffic.push(new Car(simRoad.getLaneCenter(1), -700, 30, 50, "DUMMY", 2));
+
 const playerTraffic = [];
 
-function spawnTraffic() {
+playerTraffic.push(new Car(playerRoad.getLaneCenter(1), -100, 30, 50, "DUMMY", 2));
+playerTraffic.push(new Car(playerRoad.getLaneCenter(0), -300, 30, 50, "DUMMY", 2));
+playerTraffic.push(new Car(playerRoad.getLaneCenter(2), -300, 30, 50, "DUMMY", 2));
+playerTraffic.push(new Car(playerRoad.getLaneCenter(1), -500, 30, 50, "DUMMY", 2));
+playerTraffic.push(new Car(playerRoad.getLaneCenter(2), -500, 30, 50, "DUMMY", 2));
+playerTraffic.push(new Car(playerRoad.getLaneCenter(0), -700, 30, 50, "DUMMY", 2));
+playerTraffic.push(new Car(playerRoad.getLaneCenter(1), -700, 30, 50, "DUMMY", 2));
+
+function spawnTraffic(spawnPlayerTraffic = true) {
     //possible patterns
+    /*
     const trafficPattern = {
         0 : [0],
         1 : [1],
@@ -99,20 +186,44 @@ function spawnTraffic() {
         10 : [1, 2],
         11 : [0, 2],
     }
+    */
+   //new traffic patterns for higher difficulty / better training 
 
-    for (let i = 0; i < 50; i++) {
+   const trafficPattern = {
+    0 : [1],
+    1 : [0, 1],
+    2 : [1, 2],
+    3 : [0, 2],
+    4 : [0, 1],
+    5 : [1, 2],
+    6 : [0, 1],
+    7 : [1, 2],
+    }
+
+    let lastPattern = [];
+    for (let i = 4; i < 50; i++) {
         //choose random pattern
-        const pattern = trafficPattern[Math.floor(Math.random() * 12)];
+        let pattern = trafficPattern[Math.floor(Math.random() * 8)];
+        while (lastPattern == pattern) {
+            pattern = trafficPattern[Math.floor(Math.random() * 8)];
+        }
+        lastPattern = pattern;
         //spawn cars
         for (let lane of pattern) {
             simTraffic.push(new Car(simRoad.getLaneCenter(lane), -100 - i * 200, 30, 50, "DUMMY", 2));
-            playerTraffic.push(new Car(playerRoad.getLaneCenter(lane), -100 - i * 200, 30, 50, "DUMMY", 2));
+            if (spawnPlayerTraffic) {
+                playerTraffic.push(new Car(playerRoad.getLaneCenter(lane), -100 - i * 200, 30, 50, "DUMMY", 2));
+            }
         }
     }
 }
 
 function fitness(car) {
-    const score = car.passedTrafficCars + (car.y * -1 * .001);
+    const distanceScore = car.y * -1 * .001; 
+    const passedCarsScore = car.passedTrafficCars * 10;
+    const speedScore = car.speed * 0.5;
+    const brakeScore = car.controls.reverse * -1;
+    const score = distanceScore + passedCarsScore + speedScore + brakeScore;
     return score;
 }
 
@@ -169,8 +280,9 @@ function animate(time) {
         // Check if sim cars have passed any traffic cars
         for (let i = 0; i < simCars.length; i++) {
             for (let j = 0; j < simTraffic.length; j++) {
-                if (simCars[i].y < simTraffic[j].y) {
+                if (simCars[i].y < simTraffic[j].y && !simCars[i].passedTrafficSet.has(simTraffic[j])) {
                     simCars[i].passedTrafficCars++;
+                    simCars[i].passedTrafficSet.add(simTraffic[j]);
                 }
             }
         }

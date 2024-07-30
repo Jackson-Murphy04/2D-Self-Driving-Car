@@ -19,6 +19,9 @@ class Car {
 
         this.fitness = 0;
 
+        this.passedTrafficCars = 0;
+        this.passedTrafficSet = new Set();
+
         //set non dummy cars to have sensors
         if(control == "AI") {
             this.sensor = new Sensor(this);
@@ -38,6 +41,8 @@ class Car {
         this.angle = 0;
         this.damaged = false;
         this.fitness = 0;
+        this.passedTrafficCars = 0;
+        this.passedTrafficSet.clear();
     }
 
     update(roadBoarders, traffic) {
