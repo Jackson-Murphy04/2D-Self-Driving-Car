@@ -24,7 +24,7 @@ const simRoad = new Road(carCanvas.width / 2, carCanvas.width * 0.9);
 const playerRoad = new Road(playerCanvas.width / 2, playerCanvas.width * 0.9);
 
 //define timer duration (60 seconds)
-const timerDuration = 30000;
+const timerDuration = 60000;
 let timerId;
 
 let generation = 0;
@@ -56,7 +56,7 @@ function startTimer() {
 }
 
 //create array of sim cars (N is number of agents) and function to generate cars
-const N = 500;
+const N = 1000;
 const simCars = generateCars(N);
 let bestCar = simCars[0];
 //const simCar = new Car(carCanvas.width / 2, 0, 30, 50, "AI");
@@ -123,7 +123,7 @@ function stopSim() {
         for (let i = 0; i < simCars.length; i++) {
             simCars[i].brain = JSON.parse(JSON.stringify(bestOverallBrain)); // Clone the best overall brain
             if (i != 0) {
-                NeuralNetwork.mutate(simCars[i].brain, 0.1);
+                NeuralNetwork.mutate(simCars[i].brain, 0.2);
             }
         }
 
