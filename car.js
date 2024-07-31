@@ -14,6 +14,7 @@ class Car {
         this.friction = 0.05;
         this.angle = 0;
         this.damaged = false;
+        this.damageTime = 0;
 
         this.useBrain = control == "AI";
 
@@ -45,12 +46,14 @@ class Car {
         this.passedTrafficSet.clear();
     }
 
-    update(roadBoarders, traffic) {
+    update(roadBoarders, traffic, deltaTime) {
         //if not damaged, update car position and create polygon and check for damage
         if(!this.damaged) {
             this.#move();
             this.polygon = this.#createPolygon();
             this.damaged = this.#assessDamage(roadBoarders, traffic);
+        } else {
+            this.damageTime += deltaTime;
         }
         if(this.sensor) {
             this.sensor.update(roadBoarders, traffic);

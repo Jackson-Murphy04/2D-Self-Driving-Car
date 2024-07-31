@@ -24,8 +24,10 @@ const simRoad = new Road(carCanvas.width / 2, carCanvas.width * 0.9);
 const playerRoad = new Road(playerCanvas.width / 2, playerCanvas.width * 0.9);
 
 //define timer duration (60 seconds)
-const timerDuration = 60000;
+let timerDuration = 60000;
 let timerId;
+
+const DAMAGE_TIMEOUT = 10000;
 
 let generation = 0;
 
@@ -72,6 +74,10 @@ function generateCars(N) {
     return cars;
 }
 
+//declare mutation rate
+let mutationRate = 0.2;
+let numGenImprovement = 0;
+
 function stopSim() {
     if (isAnimating) {
         isAnimating = false;
@@ -89,8 +95,23 @@ function stopSim() {
         if (bestOverallCarFitness !== null && bestCar.fitness > bestOverallCarFitness) {
             const improvement = bestCar.fitness - bestOverallCarFitness;
             console.log(`Improvement over last generation: ${improvement}`);
+            numGenImprovement++;
         } else {
             console.log(`No improvement over last generation`);
+            numGenImprovement = 0; // Reset if no improvement
+        }
+
+        console.log(`Generations since last improvement: ${numGenImprovement}`);
+        if (generation != 0) {
+            if (((generation % 10 == 0) || (numGenImprovement % 5 == 0)) && timerDuration < 300000) {
+                timerDuration += 60000;
+                console.log(`Timer Duration increased: ${timerDuration}`);
+                mutationRate *= 0.75;
+                console.log(`Mutation Rate decreased: ${mutationRate}`);
+                numGenImprovement = 0; // Reset the improvement counter
+            } else {
+                console.log(`No changes to Timer Duration or Mutation Rate`);
+            }
         }
 
         // Calculate improvement over last 5 generations
@@ -118,12 +139,13 @@ function stopSim() {
             simCars[i].reset();
             simCars[i].passedTrafficCars = 0; // Reset the passed traffic cars counter
             simCars[i].passedTrafficSet.clear(); // Clear the set of passed traffic cars
+            simCars[i].damageTime = 0; // Reset the damage time
         }
 
         for (let i = 0; i < simCars.length; i++) {
             simCars[i].brain = JSON.parse(JSON.stringify(bestOverallBrain)); // Clone the best overall brain
             if (i != 0) {
-                NeuralNetwork.mutate(simCars[i].brain, 0.2);
+                NeuralNetwork.mutate(simCars[i].brain, mutationRate);
             }
         }
 
@@ -138,7 +160,11 @@ function stopSim() {
         simTraffic.push(new Car(simRoad.getLaneCenter(0), -700, 30, 50, "DUMMY", 2));
         simTraffic.push(new Car(simRoad.getLaneCenter(1), -700, 30, 50, "DUMMY", 2));
         spawnTraffic(false);
-        startSim();
+
+        // Add a small delay before restarting to ensure everything is reset
+        setTimeout(() => {
+            startSim();
+        }, 0);
 
         // Add to generation count
         generation++;
@@ -227,11 +253,15 @@ function fitness(car) {
     return score;
 }
 
+let lastTime = 0;
+
 spawnTraffic();
 animate();
 
 function animate(time) {
-    //if not animating only animate player side 
+    const deltaTime = time - lastTime;
+    lastTime = time;
+
     if (!isAnimating) {
         //set road, network, and player canvas height to window height
         carCanvas.height = window.innerHeight;
@@ -239,10 +269,10 @@ function animate(time) {
         playerCanvas.height = window.innerHeight;
         //animate player traffic
         for (let i = 0; i < playerTraffic.length; i++) {
-            playerTraffic[i].update(playerRoad.borders, []);
+            playerTraffic[i].update(playerRoad.borders, [], deltaTime);
         }
         //animate player car
-        playerCar.update(playerRoad.borders, playerTraffic);
+        playerCar.update(playerRoad.borders, playerTraffic, deltaTime);
 
         playerCtx.save();
 
@@ -267,14 +297,14 @@ function animate(time) {
 
         //animate traffic
         for (let i = 0; i < simTraffic.length; i++) {
-            simTraffic[i].update(simRoad.borders, []);
+            simTraffic[i].update(simRoad.borders, [], deltaTime);
         }
         for (let i = 0; i < playerTraffic.length; i++) {
-            playerTraffic[i].update(playerRoad.borders, []);
+            playerTraffic[i].update(playerRoad.borders, [], deltaTime);
         }
 
         for (let i = 0; i < simCars.length; i++) {
-            simCars[i].update(simRoad.borders, simTraffic);
+            simCars[i].update(simRoad.borders, simTraffic, deltaTime);
         }
 
         // Check if sim cars have passed any traffic cars
@@ -285,6 +315,15 @@ function animate(time) {
                     simCars[i].passedTrafficSet.add(simTraffic[j]);
                 }
             }
+        }
+
+        // Check damage time for best car
+        if (bestCar.damaged && bestCar.damageTime > DAMAGE_TIMEOUT) {
+            //isAnimating = false;
+            //cancelAnimationFrame(animationFrameId);
+            //clearTimeout(timerId);
+            stopSim();  // Call stopSim directly instead of using setTimeout
+            return;
         }
 
         //call fitness function and calculate for each car and update best car
@@ -302,7 +341,7 @@ function animate(time) {
 
         //update sim and player cars
         //simCar.update(simRoad.borders, simTraffic);
-        playerCar.update(playerRoad.borders, playerTraffic);
+        playerCar.update(playerRoad.borders, playerTraffic, deltaTime);
 
         carCtx.save();
         playerCtx.save();
@@ -342,3 +381,7 @@ function animate(time) {
         animationFrameId = requestAnimationFrame(animate);
     }
 }
+
+// Initialize lastTime before starting the animation
+lastTime = performance.now();
+animate(lastTime);
